@@ -1,5 +1,5 @@
 1. Compile REXGLUE
-   cd Goldeneye-Recomp-rexglue
+   cd GoldenEye-Recomp-rexglue
    mkdir build
    cd build
    cmake .. -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
