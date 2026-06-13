@@ -22,6 +22,9 @@
 #include <rex/system/xthread.h>
 #include <rex/system/kernel_state.h>
 #include <cstdio>
+#include <string>
+
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -29,8 +32,8 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#include <shellapi.h>  // ShellExecuteW (WIN32_LEAN_AND_MEAN excludes it)
-#include <string>
+#include <shellapi.h>
+#endif
 
 namespace ge {
 // Relaunch this same executable as a fresh, detached process. Used by the ONLINE
@@ -39,17 +42,18 @@ namespace ge {
 // the current process down. Launching a second instance of a running exe is fine
 // on Windows -- the image file is opened share-read.
 void LaunchSelfDetached() {
+#ifdef _WIN32
   wchar_t exe_path[MAX_PATH];
   DWORD n = GetModuleFileNameW(nullptr, exe_path, MAX_PATH);
   if (n == 0 || n >= MAX_PATH) {
-    return;  // can't resolve our own path; skip relaunch (caller still quits)
+    return;
   }
-  // Start it from the exe's own directory so a normal boot's relative paths hold.
   std::wstring full(exe_path, exe_path + n);
   size_t slash = full.find_last_of(L"\\/");
   std::wstring workdir = (slash == std::wstring::npos) ? std::wstring() : full.substr(0, slash);
   ShellExecuteW(nullptr, L"open", exe_path, nullptr,
                 workdir.empty() ? nullptr : workdir.c_str(), SW_SHOWNORMAL);
+#endif
 }
 }  // namespace ge
 
@@ -239,36 +243,28 @@ void ge_watchdog_thread() {
                 sa, rw ? " [RENDER-WORKER]" : "", (uint32_t)c->lr, c->ctr.u32,
                 c->last_indirect_target, c->msr, c->r3.u32, c->r11.u32, c->r28.u32, c->r29.u32,
                 c->r30.u32, c->r31.u32);
-            // Guest stack walk: scan [r1, r1+0x2400) for guest code addresses
-            // (0x82xxxxxx return addresses) -> the call chain, directly readable.
-            {
-              uint32_t sp = c->r1.u32;
-              if (sp >= 0x10000u && sp < 0xC0000000u) {
-                uint8_t* hsp = base + sp;
-                MEMORY_BASIC_INFORMATION mbi;
-                if (VirtualQuery(hsp, &mbi, sizeof(mbi)) == sizeof(mbi) &&
-                    mbi.State == MEM_COMMIT &&
-                    (mbi.Protect & (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY |
-                                    PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE)) != 0) {
-                  uint8_t* rend = static_cast<uint8_t*>(mbi.BaseAddress) + mbi.RegionSize;
-                  uint8_t* send = hsp + 0x2400u;
-                  if (send > rend) send = rend;  // never read past the committed page
-                  char sbuf[500];
-                  int soff = 0;
-                  sbuf[0] = 0;
-                  for (uint8_t* pp = hsp; pp + 4 <= send && soff < 460; pp += 4) {
-                    uint32_t val;
-                    std::memcpy(&val, pp, 4);
-                    val = __builtin_bswap32(val);
-                    if (val >= 0x82000000u && val < 0x84000000u) {
-                      int n = std::snprintf(sbuf + soff, sizeof(sbuf) - soff, "%x ", val);
-                      if (n > 0) soff += n;
-                    }
-                  }
-                  REXKRNL_INFO("GEWATCHDOG   STACK start={:#x} sp={:#x}: {}", sa, sp, sbuf);
-                }
-              }
-            }
+// Guest stack walk: scan [r1, r1+0x2400) for guest code addresses
+             // (0x82xxxxxx return addresses) -> the call chain, directly readable.
+             {
+               uint32_t sp = c->r1.u32;
+               if (sp >= 0x10000u && sp < 0xC0000000u) {
+                 uint8_t* hsp = base + sp;
+                 uint8_t* send = hsp + 0x2400u;
+                 char sbuf[500];
+                 int soff = 0;
+                 sbuf[0] = 0;
+                 for (uint8_t* pp = hsp; pp + 4 <= send && soff < 460; pp += 4) {
+                   uint32_t val;
+                   std::memcpy(&val, pp, 4);
+                   val = __builtin_bswap32(val);
+                   if (val >= 0x82000000u && val < 0x84000000u) {
+                     int n = std::snprintf(sbuf + soff, sizeof(sbuf) - soff, "%x ", val);
+                     if (n > 0) soff += n;
+                   }
+                 }
+                 REXKRNL_INFO("GEWATCHDOG   STACK start={:#x} sp={:#x}: {}", sa, sp, sbuf);
+               }
+             }
             if (rw) {
               // a1 (worker struct) = r28; event = a1[2] = a1+0x20 (= r29);
               // queue = a1[3]: Flink/submit = a1+0x38, Blink/processed = a1+0x3C.
@@ -336,25 +332,19 @@ void ge_watchdog_thread() {
                   uint32_t sp = mc->r1.u32;
                   char fb[620];
                   int fo = std::snprintf(fb, sizeof(fb), "lr=%x | ", pc);
-                  if (sp >= 0x10000u && sp < 0xC0000000u) {
-                    uint8_t* hsp = base + sp;
-                    MEMORY_BASIC_INFORMATION mbi;
-                    if (VirtualQuery(hsp, &mbi, sizeof(mbi)) == sizeof(mbi) &&
-                        mbi.State == MEM_COMMIT) {
-                      uint8_t* rend = static_cast<uint8_t*>(mbi.BaseAddress) + mbi.RegionSize;
-                      uint8_t* send = hsp + 0x2800u;
-                      if (send > rend) send = rend;
-                      for (uint8_t* pp = hsp; pp + 4 <= send && fo < 580; pp += 4) {
-                        uint32_t v;
-                        std::memcpy(&v, pp, 4);
-                        v = __builtin_bswap32(v);
-                        if (v >= 0x82000000u && v < 0x84000000u) {
-                          int n = std::snprintf(fb + fo, sizeof(fb) - fo, "%x ", v);
-                          if (n > 0) fo += n;
-                        }
-                      }
-                    }
-                  }
+if (sp >= 0x10000u && sp < 0xC0000000u) {
+                     uint8_t* hsp = base + sp;
+                     uint8_t* send = hsp + 0x2800u;
+                     for (uint8_t* pp = hsp; pp + 4 <= send && fo < 580; pp += 4) {
+                       uint32_t v;
+                       std::memcpy(&v, pp, 4);
+                       v = __builtin_bswap32(v);
+                       if (v >= 0x82000000u && v < 0x84000000u) {
+                         int n = std::snprintf(fb + fo, sizeof(fb) - fo, "%x ", v);
+                         if (n > 0) fo += n;
+                       }
+                     }
+                   }
                   REXKRNL_INFO("GEWATCHDOG FRAMEWORK[{}] {}", logged, fb);
                   logged++;
                 }
