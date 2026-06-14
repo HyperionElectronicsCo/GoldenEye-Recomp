@@ -7,6 +7,7 @@
 #pragma once
 
 #include <rex/cvar.h>
+#include <rex/logging.h>
 #include <rex/rex_app.h>
 #include <rex/system/kernel_state.h>
 #include <rex/system/xam/user_profile.h>
@@ -86,12 +87,28 @@ class GeApp : public rex::ReXApp {
     }
     GeMenuDialog::Callbacks cb;
     cb.on_closed = [this] { menu_ = nullptr; };
-    cb.on_quit = [this] {
-      if (runtime() && runtime()->kernel_state()) {
-        runtime()->kernel_state()->TerminateTitle();
-      }
-      app_context().QuitFromUIThread();
-    };
+cb.on_quit = [this] {
+       REXLOG_INFO("GeApp: on_quit callback triggered");
+       app_context().CallInUIThreadDeferred([this] {
+         REXLOG_INFO("GeApp: deferred quit executing on UI thread");
+         // Disconnect the painter from the window to stop accepting new GPU work
+         if (window()) {
+           window()->SetPresenter(nullptr);
+         }
+         // Now shutdown graphics (waits for GPU thread to finish)
+         if (runtime() && runtime()->graphics_system()) {
+           REXLOG_INFO("GeApp: shutting down graphics system");
+           runtime()->graphics_system()->Shutdown();
+         }
+         // Now terminate the guest
+         if (runtime() && runtime()->kernel_state()) {
+           REXLOG_INFO("GeApp: calling kernel_state()->TerminateTitle()");
+           runtime()->kernel_state()->TerminateTitle();
+         }
+         REXLOG_INFO("GeApp: calling app_context().QuitFromUIThread()");
+         app_context().QuitFromUIThread();
+       });
+     };
     cb.get_fullscreen = [this] { return window() && window()->IsFullscreen(); };
     cb.request_fullscreen = [this](bool v) {
       // Persist the choice: update the cvar (so SaveConfig writes it) and flush

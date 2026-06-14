@@ -11,6 +11,7 @@
 #include "ge_postfx.h"
 
 #include <rex/cvar.h>
+#include <rex/logging.h>
 
 #include <imgui.h>
 
@@ -515,6 +516,7 @@ void GeMenuDialog::DrawContent(ImGuiIO& /*io*/) {
       }
       ImGui::Spacing();
       if (ImGui::Button("QUIT TO DESKTOP", bsize)) {
+        REXLOG_INFO("GeMenuDialog: QUIT TO DESKTOP button pressed");
         quit_requested_ = true;
         Close();
       }
