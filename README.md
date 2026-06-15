@@ -53,6 +53,7 @@ joiners — only the host's server port has to be reachable.
 Most people should just use the [Releases](../../releases). To build it yourself
 you need the recompiler toolchain and your own copy of the game.
 
+### Windows
 **Prerequisites**
 - The [ReXGlue SDK](https://github.com/SunJaycy/GoldenEye-Recomp-rexglue) (provides the `rexglue` CLI + runtime).
 - CMake 3.25+, a C++23 compiler (MSVC), Python 3.
@@ -70,10 +71,35 @@ cmake --preset win-amd64-relwithdebinfo -DREXSDK_DIR=/path/to/GoldenEye-Recomp-r
 cmake --build --preset win-amd64-relwithdebinfo
 ```
 
-source lives in [`src/`](src/):
-`ge_app` (app + window/menus glue), `ge_menu` (pause/settings menu),
-`ge_hooks` (mid-asm fixups), `ge_postfx` (filters). `ge_manifest.toml` /
-`ge_config.toml` drive the recompiler.
+### Linux
+**Prerequisites**
+- Clang 19+ C++23 compiler, CMake 3.25+, Ninja, Python 3, LLD linker.
+- Your own GoldenEye 007 XBLA game files, placed in `assets/`.
+
+```sh
+# 1. Build the ReXGlue SDK (codegen tool + runtime library).
+cd GoldenEye-Recomp-rexglue
+mkdir -p build && cd build
+cmake .. -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER_TYPE=LLD
+cd ..
+cmake --build build -j$(nproc)
+
+# 2. Generate the recompiled game code from your game files.
+cd ..
+REX_MAX_JUMP_TABLE_ENTRIES=2048 ./GoldenEye-Recomp-rexglue/out/linux-amd64/rexglue codegen ge_manifest.toml
+
+# 3. Configure the game project (links against the rexglue SDK in-tree).
+cmake --preset linux-amd64-release \
+    -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+    -DREXSDK_DIR=GoldenEye-Recomp-rexglue/
+
+# 4. Build.
+cmake --build --preset linux-amd64-release -j$(nproc)
+```
+
+The game binary is at `out/build/linux-amd64-release/ge`. All shared libraries
+(`librexruntime.so`, etc.) and the config (`ge.toml`) are colocated in the same
+directory.
 
 ## Legal
 

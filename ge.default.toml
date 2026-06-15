@@ -1,0 +1,20 @@
+# GoldenEye Recomp - default runtime configuration
+# This file is copied to the build output directory on each build.
+# The game reads it at startup; the in-game menu writes changes back to it.
+max_fps = 60
+resolution_scale = 2
+render_target_path_vulkan = "fbo"
+present_effect = "fsr"
+present_fsr_sharpness_reduction = 0.0
+present_fsr_max_upsampling_passes = 4
+present_dither = true
+window_width = 2560
+window_height = 1440
+present_letterbox = true
+vsync = true
+
+# Performance: Xenia Canary parity settings
+clear_memory_page_state = false
+readback_memexport = false
+anisotropic_override = -1
+execute_unclipped_draw_vs_on_cpu = false
