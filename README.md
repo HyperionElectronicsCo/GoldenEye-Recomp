@@ -91,6 +91,7 @@ REX_MAX_JUMP_TABLE_ENTRIES=2048 ./GoldenEye-Recomp-rexglue/out/linux-amd64/rexgl
 # 3. Configure the game project (links against the rexglue SDK in-tree).
 cmake --preset linux-amd64-release \
     -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+    -DCMAKE_LINKER_TYPE=LLD \
     -DREXSDK_DIR=GoldenEye-Recomp-rexglue/
 
 # 4. Build.
