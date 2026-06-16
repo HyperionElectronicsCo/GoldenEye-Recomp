@@ -2,6 +2,10 @@ Support me on Ko-fi: https://ko-fi.com/sunjayy
 
 # GoldenEye 007 — Android Recompilation
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/HyperionElectronicsCo/GoldenEye-Recomp/refs/heads/main/Screenshot_20260616-234126.png"/>
+</p>
+
 A native Android port of **GoldenEye 007 (Xbox 360 / XBLA)**, built by *statically
 recompiling* the original game into java with the
 [ReXGlue SDK](https://github.com/SunJaycy/GoldenEye-Recomp-rexglue). No emulator —
