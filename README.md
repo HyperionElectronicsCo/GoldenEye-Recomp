@@ -1,9 +1,9 @@
 Support me on Ko-fi: https://ko-fi.com/sunjayy
 
-# GoldenEye 007 — PC Recompilation
+# GoldenEye 007 — Android Recompilation
 
-A native PC port of **GoldenEye 007 (Xbox 360 / XBLA)**, built by *statically
-recompiling* the original game into C++ with the
+A native Android port of **GoldenEye 007 (Xbox 360 / XBLA)**, built by *statically
+recompiling* the original game into java with the
 [ReXGlue SDK](https://github.com/SunJaycy/GoldenEye-Recomp-rexglue). No emulator —
 the game runs as a real native executable.
 
@@ -14,7 +14,7 @@ the game runs as a real native executable.
 
 ## Features
 
-- Runs natively on Windows — no emulator, no BIOS.
+- Runs natively on Android — no emulator, no BIOS.
 - Controller support.
 - **Online multiplayer** — host or join matches over the internet (LAN, Hamachi,
   playit.gg, or a public server). See [Playing online](#playing-online).
@@ -53,7 +53,7 @@ joiners — only the host's server port has to be reachable.
 Most people should just use the [Releases](../../releases). To build it yourself
 you need the recompiler toolchain and your own copy of the game.
 
-### Windows
+### Android
 **Prerequisites**
 - The [ReXGlue SDK](https://github.com/SunJaycy/GoldenEye-Recomp-rexglue) (provides the `rexglue` CLI + runtime).
 - CMake 3.25+, a C++23 compiler (MSVC), Python 3.
